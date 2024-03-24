@@ -2,7 +2,7 @@ import monobank
 from datetime import datetime, date, timezone
 import time
 
-token = 'uhcETfSFbEeE7qpGAfEJNLsYv6xTlK61nnlP8IHyIIrk'
+token = 'token'
 mono = monobank.Client(token)
 
 def get_cards():
@@ -25,6 +25,7 @@ def get_cards():
         return []
 
 def get_pay(user_ids):
+    originAmounts = [] 
     try:
         for user_id in user_ids: 
             client = mono.get_statements(user_id, date(2024, 2, 23), date(2024, 2, 23))
@@ -33,20 +34,21 @@ def get_pay(user_ids):
                 print('Час', timeOrigin)
                 originAmount = payment['amount'] // 100
                 print('Сума', originAmount)
-                originAmounts.append(client['originAmount']) 
+                originAmounts.append(originAmount) 
                 print('Категорія', payment['description'])
                 print('Валюта', payment['currencyCode'])
                 print('--------------------------------------')
-        return originAmounts
     except Exception as e:
         print("Помилка у функції get_pay:", e)
+    return originAmounts 
 
 def get_category_earn_cost(originAmounts):
     try:
-        if str(originAmount).startswith('-'):
-            print("Витрата")
-        else:
-            print("Поповнення")
+        for originAmount in originAmounts:
+            if str(originAmount).startswith('-'):
+                print("Витрата")
+            else:
+                print("Поповнення")
     except Exception as e:
         print("Помилка у функції get_category_earn_cost:", e)
 
@@ -54,8 +56,8 @@ try:
     card_ids = get_cards()
     if card_ids:
         time.sleep(61)
-        get_pay(card_ids)
+        originAmounts = get_pay(card_ids) 
         time.sleep(100)
-        get_category_earn_cost(originAmounts)
+        get_category_earn_cost(originAmounts)  
 except Exception as e:
     print("Помилка у головній програмі:", e)
