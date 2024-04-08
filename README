@@ -1,3 +1,13 @@
 start env - env\Scripts\activate
 
 
+git init
+git remote add origin *URLGit*
+git branch -M main
+
+git status
+git add .
+git commit -m 'name commit'
+git push -u origin main
+---
+git push

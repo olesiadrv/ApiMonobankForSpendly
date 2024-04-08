@@ -1,9 +1,27 @@
 import monobank
 from datetime import datetime, date, timezone
 import time
+import iso18245
+import pandas as pd
 
 token = 'token'
 mono = monobank.Client(token)
+
+def get_mcc_description(mcc):
+    try:
+        merchant_category = iso18245.get_mcc(mcc).usda_description
+    except:
+        merchant_category = None
+    return merchant_category
+
+def read_csv(file_path):
+    try:
+        df = pd.read_csv(file_path, encoding='utf-8')
+        return df
+    except Exception as e:
+        print("Помилка у функції read_csv:", e)
+        return None
+
 
 def get_cards():
     try:
@@ -14,9 +32,9 @@ def get_cards():
                 originBalance = user['balance'] // 100
                 temp = user['maskedPan'][0]
                 if temp[0] == '4':
-                    print('VISA ''Назва карти ', user['type'], 'Номер карти ', user['maskedPan'], 'Баланс по карті', originBalance)
+                    print('VISA ''Назва карти ', user['type'], 'Номер карти ', user['maskedPan'], 'Баланс по карті', originBalance, 'id', user['id'])
                 elif temp[0] == '5':
-                    print('Master ''Назва карти ', user['type'], 'Номер карти ', user['maskedPan'], 'Баланс по карті', originBalance)
+                    print('Master ''Назва карти ', user['type'], 'Номер карти ', user['maskedPan'], 'Баланс по карті', originBalance,'id', user['id'])
                 
                 card_ids.append(user['id']) 
         return card_ids
@@ -24,11 +42,11 @@ def get_cards():
         print("Помилка у функції get_cards:", e)
         return []
 
-def get_pay(ttt):
+def get_pay(user_ids, df):
     originAmounts = [] 
     try:
-        for tt in ttt: 
-            client = mono.get_statements(tt, date(2024, 2, 23), date(2024, 2, 23))
+        for user_id in user_ids: 
+            client = mono.get_statements(user_id, date(2024, 2, 1), date(2024, 3, 1))
             for payment in client:
                 timeOrigin = datetime.fromtimestamp(payment['time'], timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 print('Час', timeOrigin)
@@ -38,15 +56,23 @@ def get_pay(ttt):
                 currency = ''
                 if payment['currencyCode'] == 980:
                     currency = 'UAH'
-                print('Категорія', payment['description'])
+                mcc_description = get_mcc_description(str(payment.get('mcc', '')))
+                category = find_category(df, mcc_description)
+                print('Категорія', category)
                 print('Валюта', currency)
                 print('--------------------------------------')
-                print( payment['description'], currency, originAmount, timeOrigin) 
     except Exception as e:
         print("Помилка у функції get_pay:", e)
     return originAmounts 
 
-#def get_only_category(user_ids)
+def find_category(df, mcc_description):
+    if df is not None:
+        mask = df['Description'] == mcc_description
+        if mask.any():
+            return df[mask]['Category'].values[0]
+    return mcc_description
+
+
 
 def get_category_earn_cost(originAmounts):
     try:
@@ -59,11 +85,15 @@ def get_category_earn_cost(originAmounts):
         print("Помилка у функції get_category_earn_cost:", e)
 
 try:
-    card_ids = get_cards()
-    if card_ids:
-        time.sleep(61)
-        originAmounts = get_pay(card_ids) 
-        time.sleep(100)
-        #get_category_earn_cost(originAmounts)  
+    file_path = 'category.csv'  # Шлях до файлу CSV
+    df = read_csv(file_path)
+    if df is not None:
+        card_ids = get_cards()
+        if card_ids:
+            time.sleep(61)
+            pp = ''
+            originAmounts = get_pay(pp, df) 
+            time.sleep(100)
+            #get_category_earn_cost(originAmounts)  
 except Exception as e:
     print("Помилка у головній програмі:", e)
